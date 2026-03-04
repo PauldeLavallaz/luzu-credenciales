@@ -110,13 +110,13 @@ export default function Home() {
         body: uploadForm,
       });
       if (!uploadRes.ok) throw new Error("No se pudo subir la foto. Intentá de nuevo.");
-      const { url: photoUrl } = await uploadRes.json();
+      const { url: photoUrl, path: photoPath } = await uploadRes.json();
 
       setStatusMsg("Lanzando el generador...");
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoUrl, name, email }),
+        body: JSON.stringify({ photoUrl, photoPath, name, email }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al generar");
