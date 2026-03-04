@@ -5,19 +5,8 @@ const UPLOAD_ENDPOINT = "https://skills.morfeolabs.com/upload/photo";
 const DEPLOYMENT_ID = "119b844e-869f-40cb-9f74-8f8e9b2b9086";
 const LUZU_LOGO = "https://skills.morfeolabs.com/static/luzu-logo.jpg";
 
-// Fixed inputs — only "personaje" varies per user
-const FIXED_INPUTS = {
-  brief: " ",
-  target: "",
-  input_seed: -1,
-  branding_pack: "logo_none",
-  aspect_ratio: "3:4",
-  logo: LUZU_LOGO,
-  style_pack: "street_authentic",
-  camera_pack: "sony_a1",
-  lens_pack: "zeiss_otus_55",
-  product: "",
-};
+// Solo se envía "personaje" — el resto vacío
+const FIXED_INPUTS = {};
 
 export async function POST(req: NextRequest) {
   try {
