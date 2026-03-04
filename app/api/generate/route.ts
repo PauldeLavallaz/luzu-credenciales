@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
 
 const COMFY_KEY = process.env.COMFY_DEPLOY_API_KEY!;
+const UPLOAD_ENDPOINT = "https://skills.morfeolabs.com/upload/photo";
 const DEPLOYMENT_ID = "119b844e-869f-40cb-9f74-8f8e9b2b9086";
-
-// Fixed values for this campaign — only "personaje" changes per user
 const LUZU_LOGO = "https://skills.morfeolabs.com/static/luzu-logo.jpg";
+
+// Fixed inputs — only "personaje" varies per user
 const FIXED_INPUTS = {
   brief: " ",
   target: "",
@@ -30,14 +30,23 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
     }
 
-    // Upload photo to Vercel Blob → get public URL
-    const blob = await put(`luzu-submissions/${Date.now()}-${photo.name}`, photo, {
-      access: "public",
+    // 1. Upload photo to skills.morfeolabs.com → get public URL
+    const uploadForm = new FormData();
+    uploadForm.append("photo", photo);
+
+    const uploadRes = await fetch(UPLOAD_ENDPOINT, {
+      method: "POST",
+      body: uploadForm,
     });
 
-    const personajeUrl = blob.url;
+    if (!uploadRes.ok) {
+      console.error("Upload failed:", await uploadRes.text());
+      return NextResponse.json({ error: "Error al subir la foto" }, { status: 500 });
+    }
 
-    // Call ComfyDeploy
+    const { url: personajeUrl } = await uploadRes.json();
+
+    // 2. Launch ComfyDeploy run
     const comfyRes = await fetch(
       "https://api.comfydeploy.com/api/run/deployment/queue",
       {
@@ -59,17 +68,14 @@ export async function POST(req: NextRequest) {
     if (!comfyRes.ok) {
       const errText = await comfyRes.text();
       console.error("ComfyDeploy error:", errText);
-      return NextResponse.json(
-        { error: "Error al iniciar la generación" },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: "Error al iniciar la generación" }, { status: 500 });
     }
 
     const comfyData = await comfyRes.json();
     const runId = comfyData.run_id;
 
-    // Log lead data (server-side)
-    console.log(`[LEAD] name=${name} email=${email} run_id=${runId} ts=${new Date().toISOString()}`);
+    // Log lead (server-side only)
+    console.log(`[LEAD] name="${name}" email="${email}" run_id=${runId} ts=${new Date().toISOString()}`);
 
     return NextResponse.json({ run_id: runId, ok: true });
   } catch (err) {
