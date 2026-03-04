@@ -102,13 +102,22 @@ export default function Home() {
     setStatusMsg("Subiendo tu foto...");
 
     try {
-      const formData = new FormData();
-      formData.append("photo", photo);
-      formData.append("name", name);
-      formData.append("email", email);
+      // 1. Subir foto directo al servidor (evita límite de 4.5MB de Vercel)
+      const uploadForm = new FormData();
+      uploadForm.append("photo", photo);
+      const uploadRes = await fetch("https://skills.morfeolabs.com/upload/photo", {
+        method: "POST",
+        body: uploadForm,
+      });
+      if (!uploadRes.ok) throw new Error("No se pudo subir la foto. Intentá de nuevo.");
+      const { url: photoUrl } = await uploadRes.json();
 
       setStatusMsg("Lanzando el generador...");
-      const res = await fetch("/api/generate", { method: "POST", body: formData });
+      const res = await fetch("/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photoUrl, name, email }),
+      });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al generar");
 

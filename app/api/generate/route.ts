@@ -1,41 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const COMFY_KEY = process.env.COMFY_DEPLOY_API_KEY!;
-const UPLOAD_ENDPOINT = "https://skills.morfeolabs.com/upload/photo";
 const DEPLOYMENT_ID = "119b844e-869f-40cb-9f74-8f8e9b2b9086";
-const LUZU_LOGO = "https://skills.morfeolabs.com/static/luzu-logo.jpg";
-
-// Solo se envía "personaje" — el resto vacío
-const FIXED_INPUTS = {};
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const photo = formData.get("photo") as File | null;
-    const name = formData.get("name") as string;
-    const email = formData.get("email") as string;
+    // El cliente ya subió la foto directo al EC2 y nos pasa solo la URL (sin pasar por Vercel)
+    const { photoUrl: personajeUrl, name, email } = await req.json();
 
-    if (!photo || !name || !email) {
+    if (!personajeUrl || !name || !email) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
     }
 
-    // 1. Upload photo to skills.morfeolabs.com → get public URL
-    const uploadForm = new FormData();
-    uploadForm.append("photo", photo);
-
-    const uploadRes = await fetch(UPLOAD_ENDPOINT, {
-      method: "POST",
-      body: uploadForm,
-    });
-
-    if (!uploadRes.ok) {
-      console.error("Upload failed:", await uploadRes.text());
-      return NextResponse.json({ error: "Error al subir la foto" }, { status: 500 });
-    }
-
-    const { url: personajeUrl } = await uploadRes.json();
-
-    // 2. Launch ComfyDeploy run
+    // Launch ComfyDeploy run — solo "personaje" como input
     const comfyRes = await fetch(
       "https://api.comfydeploy.com/api/run/deployment/queue",
       {
@@ -46,24 +23,19 @@ export async function POST(req: NextRequest) {
         },
         body: JSON.stringify({
           deployment_id: DEPLOYMENT_ID,
-          inputs: {
-            ...FIXED_INPUTS,
-            personaje: personajeUrl,
-          },
+          inputs: { personaje: personajeUrl },
         }),
       }
     );
 
     if (!comfyRes.ok) {
-      const errText = await comfyRes.text();
-      console.error("ComfyDeploy error:", errText);
+      console.error("ComfyDeploy error:", await comfyRes.text());
       return NextResponse.json({ error: "Error al iniciar la generación" }, { status: 500 });
     }
 
     const comfyData = await comfyRes.json();
     const runId = comfyData.run_id;
 
-    // Log lead (server-side only)
     console.log(`[LEAD] name="${name}" email="${email}" run_id=${runId} ts=${new Date().toISOString()}`);
 
     // Fire-and-forget al EC2 — polling server-side + email aunque el cliente cierre la pestaña
