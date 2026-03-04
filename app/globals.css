@@ -1,0 +1,131 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&display=swap');
+@import "tailwindcss";
+
+:root {
+  --luzu-teal: #00D5C8;
+  --luzu-yellow: #F9B928;
+  --luzu-pink: #F5BDE6;
+  --luzu-red: #E63A3A;
+  --luzu-black: #0D0D0D;
+  --luzu-white: #FAFAF8;
+  --stroke: 3px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background-color: var(--luzu-black);
+  color: var(--luzu-white);
+  overflow-x: hidden;
+}
+
+h1, h2, h3, .fredoka {
+  font-family: 'Fredoka', sans-serif;
+}
+
+/* Sticker border effect */
+.sticker {
+  -webkit-text-stroke: var(--stroke) var(--luzu-black);
+  paint-order: stroke fill;
+}
+
+/* Noise texture overlay */
+.noise::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Upload zone */
+.upload-zone {
+  border: 3px dashed var(--luzu-teal);
+  background: rgba(0, 213, 200, 0.05);
+  transition: all 0.2s;
+}
+.upload-zone:hover, .upload-zone.active {
+  border-color: var(--luzu-yellow);
+  background: rgba(249, 185, 40, 0.08);
+}
+
+/* Chunky button */
+.btn-luzu {
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 600;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+  background: var(--luzu-yellow);
+  color: var(--luzu-black);
+  border: 3px solid var(--luzu-black);
+  box-shadow: 4px 4px 0px var(--luzu-black);
+  transition: all 0.12s;
+  cursor: pointer;
+}
+.btn-luzu:hover:not(:disabled) {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0px var(--luzu-black);
+}
+.btn-luzu:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px var(--luzu-black);
+}
+.btn-luzu:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Input style */
+.input-luzu {
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.15);
+  color: var(--luzu-white);
+  font-family: 'Nunito', sans-serif;
+  font-size: 1rem;
+  transition: border-color 0.2s;
+  outline: none;
+}
+.input-luzu:focus {
+  border-color: var(--luzu-teal);
+}
+.input-luzu::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+
+/* Spinner */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  animation: spin 0.8s linear infinite;
+}
+
+/* Sticker float animations */
+@keyframes float1 { 0%,100%{ transform: translateY(0) rotate(-8deg); } 50%{ transform: translateY(-12px) rotate(-6deg); } }
+@keyframes float2 { 0%,100%{ transform: translateY(0) rotate(5deg); } 50%{ transform: translateY(-8px) rotate(7deg); } }
+@keyframes float3 { 0%,100%{ transform: translateY(0) rotate(12deg); } 50%{ transform: translateY(-10px) rotate(10deg); } }
+@keyframes float4 { 0%,100%{ transform: translateY(0) rotate(-3deg); } 50%{ transform: translateY(-14px) rotate(-5deg); } }
+.anim-float1 { animation: float1 4s ease-in-out infinite; }
+.anim-float2 { animation: float2 5s ease-in-out infinite 0.5s; }
+.anim-float3 { animation: float3 3.5s ease-in-out infinite 1s; }
+.anim-float4 { animation: float4 4.5s ease-in-out infinite 1.5s; }
+
+/* Card */
+.card-luzu {
+  background: rgba(255,255,255,0.04);
+  border: 2px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(12px);
+}
+
+/* Result glow */
+@keyframes glow-pulse {
+  0%,100% { box-shadow: 0 0 20px rgba(0,213,200,0.4), 4px 4px 0 var(--luzu-black); }
+  50% { box-shadow: 0 0 40px rgba(249,185,40,0.5), 4px 4px 0 var(--luzu-black); }
+}
+.result-glow {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
