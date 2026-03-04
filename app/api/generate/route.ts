@@ -66,6 +66,13 @@ export async function POST(req: NextRequest) {
     // Log lead (server-side only)
     console.log(`[LEAD] name="${name}" email="${email}" run_id=${runId} ts=${new Date().toISOString()}`);
 
+    // Fire-and-forget al EC2 — polling server-side + email aunque el cliente cierre la pestaña
+    fetch("https://skills.morfeolabs.com/api/watch-job", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ run_id: runId, email, name }),
+    }).catch((err) => console.error("watch-job notify error:", err));
+
     return NextResponse.json({ run_id: runId, ok: true });
   } catch (err) {
     console.error("generate error:", err);
