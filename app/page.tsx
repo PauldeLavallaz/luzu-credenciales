@@ -347,6 +347,12 @@ export default function Home() {
           if (statusData.status === "success" && statusData.output_url) {
             setResultUrl(statusData.output_url);
             setStage("result");
+            // Enviar email con la credencial (fire-and-forget)
+            fetch("/api/send-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, name, imageUrl: statusData.output_url }),
+            }).catch(() => {});
             return;
           }
           if (statusData.status === "failed") throw new Error("La generación falló. Intentá de nuevo.");
