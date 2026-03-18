@@ -23,6 +23,214 @@ interface FallingEmoji {
   rotation: number;
 }
 
+const GRID = 20;
+const CELL = 15;
+const BOARD = GRID * CELL; // 300px
+
+type SnakeState = "idle" | "playing" | "dead";
+
+function SnakeGame() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const stateRef = useRef<SnakeState>("idle");
+  const snakeRef = useRef([{ x: 10, y: 10 }]);
+  const dirRef = useRef({ x: 1, y: 0 });
+  const nextDirRef = useRef({ x: 1, y: 0 });
+  const foodRef = useRef({ x: 15, y: 10 });
+  const scoreRef = useRef(0);
+  const bestRef = useRef(0);
+  const [display, setDisplay] = useState<{ state: SnakeState; score: number; best: number }>({
+    state: "idle", score: 0, best: 0,
+  });
+
+  const spawnFood = useCallback((snake: { x: number; y: number }[]) => {
+    let pos: { x: number; y: number };
+    do {
+      pos = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
+    } while (snake.some((s) => s.x === pos.x && s.y === pos.y));
+    foodRef.current = pos;
+  }, []);
+
+  const startGame = useCallback(() => {
+    snakeRef.current = [{ x: 10, y: 10 }];
+    dirRef.current = { x: 1, y: 0 };
+    nextDirRef.current = { x: 1, y: 0 };
+    scoreRef.current = 0;
+    spawnFood(snakeRef.current);
+    stateRef.current = "playing";
+    setDisplay({ state: "playing", score: 0, best: bestRef.current });
+  }, [spawnFood]);
+
+  // Touch controls
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+  }, []);
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (!touchStartRef.current) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStartRef.current.x;
+    const dy = t.clientY - touchStartRef.current.y;
+    if (Math.abs(dx) < 20 && Math.abs(dy) < 20) {
+      // Tap — start game if idle/dead
+      if (stateRef.current !== "playing") startGame();
+      return;
+    }
+    const d = dirRef.current;
+    if (Math.abs(dx) > Math.abs(dy)) {
+      if (dx > 0 && d.x === 0) nextDirRef.current = { x: 1, y: 0 };
+      else if (dx < 0 && d.x === 0) nextDirRef.current = { x: -1, y: 0 };
+    } else {
+      if (dy > 0 && d.y === 0) nextDirRef.current = { x: 0, y: 1 };
+      else if (dy < 0 && d.y === 0) nextDirRef.current = { x: 0, y: -1 };
+    }
+    touchStartRef.current = null;
+  }, [startGame]);
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+      e.preventDefault();
+      if (stateRef.current !== "playing") { startGame(); return; }
+      const d = dirRef.current;
+      switch (e.key) {
+        case "ArrowUp": if (d.y === 0) nextDirRef.current = { x: 0, y: -1 }; break;
+        case "ArrowDown": if (d.y === 0) nextDirRef.current = { x: 0, y: 1 }; break;
+        case "ArrowLeft": if (d.x === 0) nextDirRef.current = { x: -1, y: 0 }; break;
+        case "ArrowRight": if (d.x === 0) nextDirRef.current = { x: 1, y: 0 }; break;
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  }, [startGame]);
+
+  // Game loop
+  useEffect(() => {
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
+
+    const drawGrid = () => {
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, BOARD, BOARD);
+      ctx.strokeStyle = "rgba(255,255,255,0.03)";
+      ctx.lineWidth = 0.5;
+      for (let i = 0; i <= GRID; i++) {
+        ctx.beginPath(); ctx.moveTo(i * CELL, 0); ctx.lineTo(i * CELL, BOARD); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, i * CELL); ctx.lineTo(BOARD, i * CELL); ctx.stroke();
+      }
+    };
+
+    const drawIdle = () => {
+      drawGrid();
+      ctx.fillStyle = "rgba(255,255,255,0.5)";
+      ctx.font = "bold 14px Fredoka, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("🐍 SNAKE", BOARD / 2, BOARD / 2 - 12);
+      ctx.fillStyle = "rgba(255,255,255,0.3)";
+      ctx.font = "12px Nunito, sans-serif";
+      ctx.fillText("Flechas o swipe para jugar", BOARD / 2, BOARD / 2 + 12);
+    };
+
+    const drawDead = () => {
+      ctx.fillStyle = "rgba(0,0,0,0.6)";
+      ctx.fillRect(0, 0, BOARD, BOARD);
+      ctx.fillStyle = "#E63A3A";
+      ctx.font = "bold 16px Fredoka, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Game Over", BOARD / 2, BOARD / 2 - 8);
+      ctx.fillStyle = "rgba(255,255,255,0.4)";
+      ctx.font = "12px Nunito, sans-serif";
+      ctx.fillText("Tocá o presioná para reiniciar", BOARD / 2, BOARD / 2 + 14);
+    };
+
+    // Initial draw
+    drawIdle();
+
+    const tick = setInterval(() => {
+      if (stateRef.current !== "playing") {
+        if (stateRef.current === "idle") drawIdle();
+        return;
+      }
+
+      dirRef.current = nextDirRef.current;
+      const snake = snakeRef.current;
+      const dir = dirRef.current;
+      const head = {
+        x: (snake[0].x + dir.x + GRID) % GRID,
+        y: (snake[0].y + dir.y + GRID) % GRID,
+      };
+
+      if (snake.some((s) => s.x === head.x && s.y === head.y)) {
+        if (scoreRef.current > bestRef.current) bestRef.current = scoreRef.current;
+        stateRef.current = "dead";
+        setDisplay({ state: "dead", score: scoreRef.current, best: bestRef.current });
+        drawDead();
+        return;
+      }
+
+      const newSnake = [head, ...snake];
+      if (head.x === foodRef.current.x && head.y === foodRef.current.y) {
+        spawnFood(newSnake);
+        scoreRef.current++;
+        setDisplay((d) => ({ ...d, score: scoreRef.current }));
+      } else {
+        newSnake.pop();
+      }
+      snakeRef.current = newSnake;
+
+      // Draw
+      drawGrid();
+
+      // Food glow
+      const fx = foodRef.current.x * CELL + CELL / 2;
+      const fy = foodRef.current.y * CELL + CELL / 2;
+      const grd = ctx.createRadialGradient(fx, fy, 2, fx, fy, CELL);
+      grd.addColorStop(0, "rgba(249,185,40,0.3)");
+      grd.addColorStop(1, "transparent");
+      ctx.fillStyle = grd;
+      ctx.fillRect(foodRef.current.x * CELL - 4, foodRef.current.y * CELL - 4, CELL + 8, CELL + 8);
+
+      // Food
+      ctx.fillStyle = "#F9B928";
+      ctx.beginPath();
+      ctx.roundRect(foodRef.current.x * CELL + 2, foodRef.current.y * CELL + 2, CELL - 4, CELL - 4, 3);
+      ctx.fill();
+
+      // Snake
+      newSnake.forEach((s, i) => {
+        const r = i === 0 ? 5 : 3;
+        ctx.fillStyle = i === 0 ? "#00D5C8" : `rgba(0,${180 - i * 2},${168 - i * 2},1)`;
+        ctx.beginPath();
+        ctx.roundRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2, r);
+        ctx.fill();
+      });
+    }, 110);
+
+    return () => clearInterval(tick);
+  }, [spawnFood]);
+
+  return (
+    <div className="mt-5">
+      <div className="flex items-center justify-between mb-2 px-1">
+        <p className="text-white/30 text-xs font-semibold">
+          {display.state === "idle" ? "Mientras esperás..." : `Score: ${display.score}`}
+        </p>
+        {display.best > 0 && (
+          <p className="text-[var(--luzu-yellow)] text-xs font-bold">Best: {display.best}</p>
+        )}
+      </div>
+      <canvas
+        ref={canvasRef}
+        width={BOARD}
+        height={BOARD}
+        className="rounded-xl border-2 border-white/10 mx-auto block touch-none"
+        onTouchStart={handleTouchStart}
+        onTouchEnd={handleTouchEnd}
+      />
+    </div>
+  );
+}
+
 function FallingEmojis() {
   const [emojis, setEmojis] = useState<FallingEmoji[]>([]);
 
@@ -307,21 +515,17 @@ export default function Home() {
             {stage === "loading" && (
               <motion.div key="loading" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }} className="text-center w-full max-w-sm">
-                <div className="card-luzu rounded-2xl p-10">
-                  <div className="relative w-24 h-24 mx-auto mb-6">
-                    <div className="spinner absolute inset-0 rounded-full border-4 border-transparent"
-                      style={{ borderTopColor: "var(--luzu-teal)", borderRightColor: "var(--luzu-yellow)" }} />
-                    <div className="absolute inset-3 rounded-full flex items-center justify-center text-3xl">🎨</div>
+                <div className="card-luzu rounded-2xl p-6">
+                  <div className="flex items-center justify-center gap-3 mb-1">
+                    <div className="relative w-10 h-10">
+                      <div className="spinner absolute inset-0 rounded-full border-[3px] border-transparent"
+                        style={{ borderTopColor: "var(--luzu-teal)", borderRightColor: "var(--luzu-yellow)" }} />
+                      <div className="absolute inset-1.5 rounded-full flex items-center justify-center text-base">🎨</div>
+                    </div>
+                    <h2 className="fredoka text-xl font-bold text-white">Generando tu credencial...</h2>
                   </div>
-                  <h2 className="fredoka text-2xl font-bold text-white mb-3">Generando tu credencial...</h2>
-                  <p className="text-white/60 text-sm leading-relaxed">{statusMsg}</p>
-                  <div className="flex justify-center gap-2 mt-6">
-                    {[0, 1, 2].map((i) => (
-                      <motion.div key={i} className="w-2 h-2 rounded-full" style={{ background: "var(--luzu-yellow)" }}
-                        animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
-                        transition={{ duration: 1, repeat: Infinity, delay: i * 0.3 }} />
-                    ))}
-                  </div>
+                  <p className="text-white/50 text-sm">{statusMsg}</p>
+                  <SnakeGame />
                 </div>
               </motion.div>
             )}
