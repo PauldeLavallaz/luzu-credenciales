@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
     }
 
     await resend.emails.send({
-      from: "Luzu Credenciales <credenciales@luzu.tv>",
+      from: "Luzu Credenciales <credenciales@marketing.morfeolabs.com>",
       to: email,
       subject: `${name}, tu credencial Luzu está lista! 🎉`,
       html: `
