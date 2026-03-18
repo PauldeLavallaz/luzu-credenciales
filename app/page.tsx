@@ -67,6 +67,7 @@ function FallingEmojis() {
 export default function Home() {
   const [stage, setStage] = useState<Stage>("form");
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [selectorEstilo, setSelectorEstilo] = useState<number>(1);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
@@ -96,7 +97,7 @@ export default function Home() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!photo || !name) return;
+    if (!photo || !name || !email) return;
 
     setStage("loading");
     setStatusMsg("Subiendo tu foto...");
@@ -116,7 +117,7 @@ export default function Home() {
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoUrl, name, selectorEstilo }),
+        body: JSON.stringify({ photoUrl, name, email, selectorEstilo }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al generar");
@@ -269,6 +270,13 @@ export default function Home() {
                         placeholder="¿Cómo te llamás?" className="input-luzu w-full rounded-xl px-4 py-3" required />
                     </div>
 
+                    {/* Email */}
+                    <div>
+                      <label className="fredoka text-lg font-semibold text-white/80 block mb-2">Tu mail 📩</label>
+                      <input type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                        placeholder="tu@mail.com" className="input-luzu w-full rounded-xl px-4 py-3" required />
+                    </div>
+
                     {/* Estilo */}
                     <div>
                       <label className="fredoka text-lg font-semibold text-white/80 block mb-2">Elegí tu estilo 🎨</label>
@@ -283,7 +291,7 @@ export default function Home() {
                       </select>
                     </div>
 
-                    <button type="submit" disabled={!photo || !name} className="btn-luzu w-full rounded-xl py-4 mt-2">
+                    <button type="submit" disabled={!photo || !name || !email} className="btn-luzu w-full rounded-xl py-4 mt-2">
                       ¡Generá mi credencial! 🚀
                     </button>
                   </form>

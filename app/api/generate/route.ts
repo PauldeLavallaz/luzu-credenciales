@@ -5,9 +5,9 @@ const DEPLOYMENT_ID = "119b844e-869f-40cb-9f74-8f8e9b2b9086";
 
 export async function POST(req: NextRequest) {
   try {
-    const { photoUrl, name, selectorEstilo } = await req.json();
+    const { photoUrl, name, email, selectorEstilo } = await req.json();
 
-    if (!photoUrl || !name || !selectorEstilo) {
+    if (!photoUrl || !name || !email || !selectorEstilo) {
       return NextResponse.json({ error: "Faltan campos requeridos" }, { status: 400 });
     }
 
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { run_id: runId } = await comfyRes.json();
-    console.log(`[LEAD] name="${name}" estilo=${selectorEstilo} run_id=${runId}`);
+    console.log(`[LEAD] name="${name}" email="${email}" estilo=${selectorEstilo} run_id=${runId}`);
 
     return NextResponse.json({ run_id: runId, ok: true });
   } catch (err) {
