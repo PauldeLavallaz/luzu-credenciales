@@ -23,121 +23,6 @@ interface FallingEmoji {
   rotation: number;
 }
 
-const GRID = 20;
-const CELL = 14;
-const INITIAL_SNAKE = [{ x: 10, y: 10 }];
-const INITIAL_DIR = { x: 1, y: 0 };
-
-function randomFood(snake: { x: number; y: number }[]) {
-  let pos: { x: number; y: number };
-  do {
-    pos = { x: Math.floor(Math.random() * GRID), y: Math.floor(Math.random() * GRID) };
-  } while (snake.some((s) => s.x === pos.x && s.y === pos.y));
-  return pos;
-}
-
-function SnakeGame() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const snakeRef = useRef(INITIAL_SNAKE);
-  const dirRef = useRef(INITIAL_DIR);
-  const foodRef = useRef(randomFood(INITIAL_SNAKE));
-  const scoreRef = useRef(0);
-  const [score, setScore] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
-  const gameOverRef = useRef(false);
-
-  const resetGame = useCallback(() => {
-    snakeRef.current = [{ x: 10, y: 10 }];
-    dirRef.current = { x: 1, y: 0 };
-    foodRef.current = randomFood(snakeRef.current);
-    scoreRef.current = 0;
-    setScore(0);
-    gameOverRef.current = false;
-    setGameOver(false);
-  }, []);
-
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (gameOverRef.current) { resetGame(); return; }
-      const d = dirRef.current;
-      switch (e.key) {
-        case "ArrowUp": if (d.y === 0) dirRef.current = { x: 0, y: -1 }; break;
-        case "ArrowDown": if (d.y === 0) dirRef.current = { x: 0, y: 1 }; break;
-        case "ArrowLeft": if (d.x === 0) dirRef.current = { x: -1, y: 0 }; break;
-        case "ArrowRight": if (d.x === 0) dirRef.current = { x: 1, y: 0 }; break;
-      }
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [resetGame]);
-
-  useEffect(() => {
-    const ctx = canvasRef.current?.getContext("2d");
-    if (!ctx) return;
-    const size = GRID * CELL;
-
-    const tick = setInterval(() => {
-      if (gameOverRef.current) return;
-      const snake = snakeRef.current;
-      const dir = dirRef.current;
-      const head = { x: (snake[0].x + dir.x + GRID) % GRID, y: (snake[0].y + dir.y + GRID) % GRID };
-
-      if (snake.some((s) => s.x === head.x && s.y === head.y)) {
-        gameOverRef.current = true;
-        setGameOver(true);
-        return;
-      }
-
-      const newSnake = [head, ...snake];
-      if (head.x === foodRef.current.x && head.y === foodRef.current.y) {
-        foodRef.current = randomFood(newSnake);
-        scoreRef.current++;
-        setScore(scoreRef.current);
-      } else {
-        newSnake.pop();
-      }
-      snakeRef.current = newSnake;
-
-      // Draw
-      ctx.fillStyle = "#1a1a1a";
-      ctx.fillRect(0, 0, size, size);
-      // Food
-      ctx.fillStyle = "#F9B928";
-      ctx.beginPath();
-      ctx.arc(foodRef.current.x * CELL + CELL / 2, foodRef.current.y * CELL + CELL / 2, CELL / 2 - 1, 0, Math.PI * 2);
-      ctx.fill();
-      // Snake
-      newSnake.forEach((s, i) => {
-        ctx.fillStyle = i === 0 ? "#00D5C8" : "#00b0a5";
-        ctx.fillRect(s.x * CELL + 1, s.y * CELL + 1, CELL - 2, CELL - 2);
-      });
-    }, 120);
-
-    return () => clearInterval(tick);
-  }, []);
-
-  return (
-    <div className="mt-4">
-      <div className="flex items-center justify-between mb-2 px-1">
-        <p className="text-white/40 text-xs">🐍 Snake · Usá las flechas</p>
-        <p className="text-[var(--luzu-yellow)] text-xs font-bold">{score} pts</p>
-      </div>
-      <canvas
-        ref={canvasRef}
-        width={GRID * CELL}
-        height={GRID * CELL}
-        className="rounded-lg border border-white/10 mx-auto block"
-        style={{ imageRendering: "pixelated" }}
-      />
-      {gameOver && (
-        <p className="text-white/50 text-xs mt-2 cursor-pointer" onClick={resetGame}>
-          Game over · Presioná una flecha para reiniciar
-        </p>
-      )}
-    </div>
-  );
-}
-
 function FallingEmojis() {
   const [emojis, setEmojis] = useState<FallingEmoji[]>([]);
 
@@ -422,17 +307,21 @@ export default function Home() {
             {stage === "loading" && (
               <motion.div key="loading" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.9 }} className="text-center w-full max-w-sm">
-                <div className="card-luzu rounded-2xl p-6">
-                  <h2 className="fredoka text-2xl font-bold text-white mb-1">Generando tu credencial...</h2>
-                  <p className="text-white/60 text-sm leading-relaxed mb-2">{statusMsg}</p>
-                  <div className="flex justify-center gap-2 mb-2">
+                <div className="card-luzu rounded-2xl p-10">
+                  <div className="relative w-24 h-24 mx-auto mb-6">
+                    <div className="spinner absolute inset-0 rounded-full border-4 border-transparent"
+                      style={{ borderTopColor: "var(--luzu-teal)", borderRightColor: "var(--luzu-yellow)" }} />
+                    <div className="absolute inset-3 rounded-full flex items-center justify-center text-3xl">🎨</div>
+                  </div>
+                  <h2 className="fredoka text-2xl font-bold text-white mb-3">Generando tu credencial...</h2>
+                  <p className="text-white/60 text-sm leading-relaxed">{statusMsg}</p>
+                  <div className="flex justify-center gap-2 mt-6">
                     {[0, 1, 2].map((i) => (
                       <motion.div key={i} className="w-2 h-2 rounded-full" style={{ background: "var(--luzu-yellow)" }}
                         animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
                         transition={{ duration: 1, repeat: Infinity, delay: i * 0.3 }} />
                     ))}
                   </div>
-                  <SnakeGame />
                 </div>
               </motion.div>
             )}
