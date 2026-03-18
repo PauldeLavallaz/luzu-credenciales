@@ -321,7 +321,7 @@ export default function Home() {
       if (!uploadRes.ok) throw new Error("No se pudo subir la foto. Intentá de nuevo.");
       const { url: photoUrl } = await uploadRes.json();
 
-      setStatusMsg("Lanzando el generador...");
+      setStatusMsg("Generando tu credencial... esto tarda ~30 segundos 🎨");
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -330,41 +330,16 @@ export default function Home() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al generar");
 
-      const runId = data.run_id;
-      setStatusMsg("Generando tu credencial... esto tarda ~30 segundos 🎨");
+      setResultUrl(data.imageUrl);
+      setStage("result");
 
-      // Poll hasta 8 minutos (120 × 4s)
-      const MAX_ATTEMPTS = 120;
-      let attempts = 0;
-      while (attempts < MAX_ATTEMPTS) {
-        await new Promise(r => setTimeout(r, 4000));
-        attempts++;
-
-        try {
-          const statusRes = await fetch(`/api/status/${runId}`);
-          const statusData = await statusRes.json();
-
-          if (statusData.status === "success" && statusData.output_url) {
-            setResultUrl(statusData.output_url);
-            setStage("result");
-            // Enviar email con la credencial (fire-and-forget)
-            fetch("/api/send-email", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ email, name, imageUrl: statusData.output_url }),
-            }).catch(() => {});
-            return;
-          }
-          if (statusData.status === "failed") throw new Error("La generación falló. Intentá de nuevo.");
-        } catch (pollErr) {
-          // Ignorar errores de red transitorios y seguir polling
-          if (pollErr instanceof Error && pollErr.message.includes("falló")) throw pollErr;
-        }
-
-        const progress = Math.min(Math.round((attempts / MAX_ATTEMPTS) * 100), 95);
-        setStatusMsg(`Generando tu credencial... ${progress}% ✨`);
-      }
-      throw new Error("Tiempo de espera superado. Intentá de nuevo.");
+      // Enviar email con la credencial (fire-and-forget)
+      fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name, imageUrl: data.imageUrl }),
+      }).catch(() => {});
+      return;
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error desconocido");
       setStage("error");
