@@ -102,21 +102,21 @@ export default function Home() {
     setStatusMsg("Subiendo tu foto...");
 
     try {
-      // 1. Subir foto directo al servidor (evita límite de 4.5MB de Vercel)
+      // 1. Subir foto a Vercel Blob
       const uploadForm = new FormData();
       uploadForm.append("photo", photo);
-      const uploadRes = await fetch("https://skills.morfeolabs.com/upload/photo", {
+      const uploadRes = await fetch("/api/upload", {
         method: "POST",
         body: uploadForm,
       });
       if (!uploadRes.ok) throw new Error("No se pudo subir la foto. Intentá de nuevo.");
-      const { url: photoUrl, path: photoPath } = await uploadRes.json();
+      const { url: photoUrl } = await uploadRes.json();
 
       setStatusMsg("Lanzando el generador...");
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoUrl, photoPath, name, email }),
+        body: JSON.stringify({ photoUrl, name, email }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al generar");
@@ -124,22 +124,29 @@ export default function Home() {
       const runId = data.run_id;
       setStatusMsg("Generando tu credencial... esto tarda ~30 segundos 🎨");
 
+      // Poll hasta 8 minutos (120 × 4s)
+      const MAX_ATTEMPTS = 120;
       let attempts = 0;
-      while (attempts < 60) {
-        await new Promise(r => setTimeout(r, 3000));
+      while (attempts < MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, 4000));
         attempts++;
 
-        const statusRes = await fetch(`/api/status/${runId}`);
-        const statusData = await statusRes.json();
+        try {
+          const statusRes = await fetch(`/api/status/${runId}`);
+          const statusData = await statusRes.json();
 
-        if (statusData.status === "success" && statusData.output_url) {
-          setResultUrl(statusData.output_url);
-          setStage("result");
-          return;
+          if (statusData.status === "success" && statusData.output_url) {
+            setResultUrl(statusData.output_url);
+            setStage("result");
+            return;
+          }
+          if (statusData.status === "failed") throw new Error("La generación falló. Intentá de nuevo.");
+        } catch (pollErr) {
+          // Ignorar errores de red transitorios y seguir polling
+          if (pollErr instanceof Error && pollErr.message.includes("falló")) throw pollErr;
         }
-        if (statusData.status === "failed") throw new Error("La generación falló. Intentá de nuevo.");
 
-        const progress = Math.min(Math.round((attempts / 60) * 100), 95);
+        const progress = Math.min(Math.round((attempts / MAX_ATTEMPTS) * 100), 95);
         setStatusMsg(`Generando tu credencial... ${progress}% ✨`);
       }
       throw new Error("Tiempo de espera superado. Intentá de nuevo.");
@@ -188,7 +195,7 @@ export default function Home() {
             className="mb-8"
           >
             <Image
-              src="https://skills.morfeolabs.com/static/luzu-logo-transparent.png"
+              src="/luzu-logo-transparent.png"
               alt="Luzu TV"
               width={220}
               height={88}
