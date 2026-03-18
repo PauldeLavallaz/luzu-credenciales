@@ -272,27 +272,15 @@ export default function Home() {
                     {/* Estilo */}
                     <div>
                       <label className="fredoka text-lg font-semibold text-white/80 block mb-2">Elegí tu estilo 🎨</label>
-                      <div className="grid grid-cols-3 gap-3">
-                        {([
-                          { value: 1, label: "Collage", emoji: "✂️" },
-                          { value: 2, label: "Pixar", emoji: "🧸" },
-                          { value: 3, label: "Pop Art", emoji: "💥" },
-                        ] as const).map((style) => (
-                          <button
-                            key={style.value}
-                            type="button"
-                            onClick={() => setSelectorEstilo(style.value)}
-                            className={`rounded-xl py-3 px-2 font-bold text-sm transition-all border-2 ${
-                              selectorEstilo === style.value
-                                ? "border-[var(--luzu-teal)] bg-[var(--luzu-teal)]/20 text-white"
-                                : "border-white/10 bg-white/5 text-white/50 hover:border-white/30 hover:text-white/80"
-                            }`}
-                          >
-                            <div className="text-2xl mb-1">{style.emoji}</div>
-                            {style.label}
-                          </button>
-                        ))}
-                      </div>
+                      <select
+                        value={selectorEstilo}
+                        onChange={(e) => setSelectorEstilo(Number(e.target.value))}
+                        className="input-luzu w-full rounded-xl px-4 py-3 appearance-none cursor-pointer"
+                      >
+                        <option value={1}>✂️ Collage</option>
+                        <option value={2}>🧸 Pixar</option>
+                        <option value={3}>💥 Pop Art</option>
+                      </select>
                     </div>
 
                     <button type="submit" disabled={!photo || !name} className="btn-luzu w-full rounded-xl py-4 mt-2">
