@@ -89,15 +89,16 @@ function SnakeGame() {
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(e.key)) return;
+      const key = e.key.toLowerCase();
+      if (!["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(key)) return;
       e.preventDefault();
       if (stateRef.current !== "playing") { startGame(); return; }
       const d = dirRef.current;
-      switch (e.key) {
-        case "ArrowUp": if (d.y === 0) nextDirRef.current = { x: 0, y: -1 }; break;
-        case "ArrowDown": if (d.y === 0) nextDirRef.current = { x: 0, y: 1 }; break;
-        case "ArrowLeft": if (d.x === 0) nextDirRef.current = { x: -1, y: 0 }; break;
-        case "ArrowRight": if (d.x === 0) nextDirRef.current = { x: 1, y: 0 }; break;
+      switch (key) {
+        case "arrowup": case "w": if (d.y === 0) nextDirRef.current = { x: 0, y: -1 }; break;
+        case "arrowdown": case "s": if (d.y === 0) nextDirRef.current = { x: 0, y: 1 }; break;
+        case "arrowleft": case "a": if (d.x === 0) nextDirRef.current = { x: -1, y: 0 }; break;
+        case "arrowright": case "d": if (d.x === 0) nextDirRef.current = { x: 1, y: 0 }; break;
       }
     };
     window.addEventListener("keydown", handleKey);
@@ -128,7 +129,7 @@ function SnakeGame() {
       ctx.fillText("🐍 SNAKE", BOARD / 2, BOARD / 2 - 12);
       ctx.fillStyle = "rgba(255,255,255,0.3)";
       ctx.font = "12px Nunito, sans-serif";
-      ctx.fillText("Flechas o swipe para jugar", BOARD / 2, BOARD / 2 + 12);
+      ctx.fillText("WASD / Flechas / Swipe para jugar", BOARD / 2, BOARD / 2 + 12);
     };
 
     const drawDead = () => {
@@ -277,6 +278,7 @@ export default function Home() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [selectorEstilo, setSelectorEstilo] = useState<number>(1);
+  const [productSelector, setProductSelector] = useState<number>(1);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -321,25 +323,47 @@ export default function Home() {
       if (!uploadRes.ok) throw new Error("No se pudo subir la foto. Intentá de nuevo.");
       const { url: photoUrl } = await uploadRes.json();
 
-      setStatusMsg("Generando tu credencial... esto tarda ~30 segundos 🎨");
+      setStatusMsg("Estamos creando tu credencial... esto puede demorar unos minutos");
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ photoUrl, name, email, selectorEstilo }),
+        body: JSON.stringify({ photoUrl, name, email, selectorEstilo, productSelector }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Error al generar");
 
-      setResultUrl(data.imageUrl);
-      setStage("result");
+      const runId = data.run_id;
 
-      // Enviar email con la credencial (fire-and-forget)
-      fetch("/api/send-email", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, name, imageUrl: data.imageUrl }),
-      }).catch(() => {});
-      return;
+      // Poll hasta 8 minutos (120 × 4s)
+      const MAX_ATTEMPTS = 120;
+      let attempts = 0;
+      while (attempts < MAX_ATTEMPTS) {
+        await new Promise(r => setTimeout(r, 4000));
+        attempts++;
+
+        try {
+          const statusRes = await fetch(`/api/status/${runId}`);
+          const statusData = await statusRes.json();
+
+          if (statusData.status === "success" && statusData.output_url) {
+            setResultUrl(statusData.output_url);
+            setStage("result");
+            // Enviar email con la credencial (fire-and-forget)
+            fetch("/api/send-email", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ email, name, imageUrl: statusData.output_url }),
+            }).catch(() => {});
+            return;
+          }
+          if (statusData.status === "failed") throw new Error("La generación falló. Intentá de nuevo.");
+        } catch (pollErr) {
+          if (pollErr instanceof Error && pollErr.message.includes("falló")) throw pollErr;
+        }
+
+        setStatusMsg("Estamos creando tu credencial... esto puede demorar unos minutos");
+      }
+      throw new Error("Tiempo de espera superado. Intentá de nuevo.");
     } catch (err: unknown) {
       setErrorMsg(err instanceof Error ? err.message : "Error desconocido");
       setStage("error");
@@ -477,6 +501,21 @@ export default function Home() {
                         <option value={1}>✂️ Collage</option>
                         <option value={2}>🧸 Pixar</option>
                         <option value={3}>💥 Pop Art</option>
+                      </select>
+                    </div>
+
+                    {/* Marca / Sponsor */}
+                    <div>
+                      <label className="fredoka text-lg font-semibold text-white/80 block mb-2">Elegí tu marca 🏷️</label>
+                      <select
+                        value={productSelector}
+                        onChange={(e) => setProductSelector(Number(e.target.value))}
+                        className="input-luzu w-full rounded-xl px-4 py-3 appearance-none cursor-pointer"
+                      >
+                        <option value={1}>Mercado Libre</option>
+                        <option value={2}>CIF</option>
+                        <option value={3}>Luzu TV Shop</option>
+                        <option value={4}>Honor</option>
                       </select>
                     </div>
 
