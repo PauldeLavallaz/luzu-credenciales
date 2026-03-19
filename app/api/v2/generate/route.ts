@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Build parts array: prompt + person photo + product photo + (studio if Pixar)
     const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-      { text: prompt + "\n\nIMPORTANT: The output image MUST be in 4:5 portrait aspect ratio." },
+      { text: prompt },
       { text: "Person photo (use as the main subject):" },
       { inlineData: { mimeType: userPhoto.mimeType, data: userPhoto.data } },
       { text: "Product reference image (reproduce this product exactly):" },
@@ -93,6 +93,7 @@ export async function POST(req: NextRequest) {
           generationConfig: {
             responseModalities: ["IMAGE", "TEXT"],
             temperature: 0.95,
+            aspectRatio: "4:5",
           },
         }),
       }
