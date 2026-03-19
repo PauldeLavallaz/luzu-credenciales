@@ -5,7 +5,7 @@ import { saveCredencial } from "@/app/lib/supabase";
 export const maxDuration = 120;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-const GEMINI_MODEL = "gemini-3-pro-image-preview";
+const GEMINI_MODEL = "gemini-3.1-flash-image-preview";
 
 // Product reference image URLs (hosted on Vercel Blob)
 const PRODUCT_IMAGES: Record<number, string> = {
@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
 
     // 3. Build parts array: prompt + person photo + product photo + (studio if Pixar)
     const parts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
-      { text: prompt + "\n\nThe output image MUST be in 4:5 portrait aspect ratio." },
+      { text: prompt },
       { text: "Person photo (use as the main subject):" },
       { inlineData: { mimeType: userPhoto.mimeType, data: userPhoto.data } },
       { text: "Product reference image (reproduce this product exactly):" },
@@ -92,8 +92,11 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           contents: [{ parts }],
           generationConfig: {
-            responseModalities: ["IMAGE", "TEXT"],
-            temperature: 0.95,
+            responseModalities: ["IMAGE"],
+            imageConfig: {
+              aspectRatio: "4:5",
+              imageSize: "1K",
+            },
           },
         }),
       }
