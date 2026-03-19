@@ -29,6 +29,8 @@ const BOARD = GRID * CELL; // 300px
 
 type SnakeState = "idle" | "playing" | "dead";
 
+const isTouchDevice = () => typeof window !== "undefined" && ("ontouchstart" in window || navigator.maxTouchPoints > 0);
+
 function SnakeGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const stateRef = useRef<SnakeState>("idle");
@@ -129,7 +131,7 @@ function SnakeGame() {
       ctx.fillText("🐍 SNAKE", BOARD / 2, BOARD / 2 - 12);
       ctx.fillStyle = "rgba(255,255,255,0.3)";
       ctx.font = "12px Nunito, sans-serif";
-      ctx.fillText("WASD / Flechas / Swipe para jugar", BOARD / 2, BOARD / 2 + 12);
+      ctx.fillText(isTouchDevice() ? "Deslizá para jugar" : "WASD / Flechas para jugar", BOARD / 2, BOARD / 2 + 12);
     };
 
     const drawDead = () => {
@@ -141,7 +143,7 @@ function SnakeGame() {
       ctx.fillText("Game Over", BOARD / 2, BOARD / 2 - 8);
       ctx.fillStyle = "rgba(255,255,255,0.4)";
       ctx.font = "12px Nunito, sans-serif";
-      ctx.fillText("Tocá o presioná para reiniciar", BOARD / 2, BOARD / 2 + 14);
+      ctx.fillText(isTouchDevice() ? "Tocá para reiniciar" : "Presioná una tecla para reiniciar", BOARD / 2, BOARD / 2 + 14);
     };
 
     // Initial draw
@@ -286,6 +288,14 @@ export default function Home() {
   const [errorMsg, setErrorMsg] = useState("");
   const [statusMsg, setStatusMsg] = useState("Subiendo tu foto...");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Block scroll during loading (for mobile Snake)
+  useEffect(() => {
+    if (stage === "loading") {
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = ""; };
+    }
+  }, [stage]);
 
   const handleFile = (file: File) => {
     if (!file.type.startsWith("image/")) return;
