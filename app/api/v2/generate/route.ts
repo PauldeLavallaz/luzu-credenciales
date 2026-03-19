@@ -4,7 +4,7 @@ import { put } from "@vercel/blob";
 export const maxDuration = 120;
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY!;
-const GEMINI_MODEL = "gemini-2.5-flash-image";
+const GEMINI_MODEL = "gemini-3-pro-image-preview";
 
 const PRODUCTS: Record<number, string> = {
   1: "a Mercado Libre branded yellow shopping bag",
