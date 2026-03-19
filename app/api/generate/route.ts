@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { saveCredencial } from "@/app/lib/supabase";
 
 const COMFY_KEY = process.env.COMFY_DEPLOY_API_KEY!;
 const DEPLOYMENT_ID = "119b844e-869f-40cb-9f74-8f8e9b2b9086";
@@ -39,6 +40,12 @@ export async function POST(req: NextRequest) {
 
     const { run_id: runId } = await comfyRes.json();
     console.log(`[LEAD] name="${name}" email="${email}" estilo=${selectorEstilo} product=${productSelector} run_id=${runId}`);
+
+    // Save to Supabase (fire-and-forget, credential_url added later via status polling)
+    saveCredencial({
+      name, email, estilo: selectorEstilo, producto: productSelector,
+      photo_url: photoUrl, credential_url: null, source: "v1",
+    }).catch(() => {});
 
     return NextResponse.json({ run_id: runId, ok: true });
   } catch (err) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { put } from "@vercel/blob";
+import { saveCredencial } from "@/app/lib/supabase";
 
 export const maxDuration = 120;
 
@@ -132,6 +133,12 @@ export async function POST(req: NextRequest) {
     );
 
     console.log(`[V2 DONE] name="${name}" imageUrl=${blob.url}`);
+
+    // Save to Supabase
+    saveCredencial({
+      name, email, estilo: selectorEstilo, producto: productSelector,
+      photo_url: photoUrl, credential_url: blob.url, source: "v2",
+    }).catch(() => {});
 
     return NextResponse.json({ imageUrl: blob.url });
   } catch (err) {
