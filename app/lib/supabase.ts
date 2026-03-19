@@ -1,9 +1,11 @@
 import { createClient } from "@supabase/supabase-js";
 
-const supabase = createClient(
-  process.env.SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_KEY!
-);
+function getClient() {
+  return createClient(
+    process.env.SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_KEY!
+  );
+}
 
 export async function saveCredencial(data: {
   name: string;
@@ -14,8 +16,6 @@ export async function saveCredencial(data: {
   credential_url: string | null;
   source: string;
 }) {
-  const { error } = await supabase.from("credenciales").insert(data);
+  const { error } = await getClient().from("credenciales").insert(data);
   if (error) console.error("Supabase insert error:", error);
 }
-
-export default supabase;
